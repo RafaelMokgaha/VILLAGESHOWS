@@ -91,7 +91,12 @@ class AppService {
   }
 
   async login(email: string, password: string): Promise<User> {
-    if (!auth) throw new Error("Firebase Auth not initialized");
+    if (!auth) {
+        console.warn("Auth not initialized, using mock login");
+        this.currentUser = MOCK_USER;
+        return MOCK_USER;
+    }
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -121,14 +126,30 @@ class AppService {
       };
       
       return this.currentUser!;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
+      
+      // FALLBACK: If API Key is invalid or network fails, use Mock User to allow preview
+      if (error.code === 'auth/api-key-not-valid' || 
+          error.code === 'auth/operation-not-allowed' || 
+          error.code === 'auth/network-request-failed' ||
+          error.message?.includes('api-key')) {
+          console.warn("⚠️ Firebase Auth failed (Invalid Key). Falling back to DEMO USER.");
+          this.currentUser = MOCK_USER;
+          return MOCK_USER;
+      }
+
       throw error;
     }
   }
 
   async signup(email: string, password: string, username: string): Promise<User> {
-    if (!auth) throw new Error("Firebase Auth not initialized");
+    if (!auth) {
+        console.warn("Auth not initialized, using mock signup");
+        this.currentUser = MOCK_USER;
+        return MOCK_USER;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -156,15 +177,27 @@ class AppService {
       
       this.currentUser = newUser;
       return newUser;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Signup failed:", error);
+
+      // FALLBACK: If API Key is invalid, use Mock User
+      if (error.code === 'auth/api-key-not-valid' || error.message?.includes('api-key')) {
+        console.warn("⚠️ Firebase Auth failed (Invalid Key). Falling back to DEMO USER.");
+        this.currentUser = MOCK_USER;
+        return MOCK_USER;
+      }
+
       throw error;
     }
   }
 
   async logout(): Promise<void> {
     if (auth) {
-        await signOut(auth);
+        try {
+            await signOut(auth);
+        } catch (e) {
+            console.warn("Logout error (likely fallback mode)", e);
+        }
     }
     this.currentUser = null;
   }
@@ -181,7 +214,6 @@ class AppService {
       const videos: Video[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Convert Firestore Timestamp to number if necessary
         const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now());
         
         videos.push({
@@ -191,14 +223,10 @@ class AppService {
         } as Video);
       });
 
-      if (videos.length === 0) {
-        console.log("No videos found in Firestore, using mock data for demo.");
-        return MOCK_VIDEOS;
-      }
-
+      if (videos.length === 0) return MOCK_VIDEOS;
       return videos;
     } catch (error) {
-      console.warn("Failed to fetch videos from Firestore (likely permissions or empty), falling back to mocks.", error);
+      console.warn("Failed to fetch videos from Firestore, falling back to mocks.", error);
       return MOCK_VIDEOS;
     }
   }
@@ -225,15 +253,13 @@ class AppService {
            } as Video);
         });
         
-        // If DB is empty, use mocks so app isn't empty in demo
         if (videos.length === 0) {
-            console.log("Real DB is connected but empty. Showing mocks for UI preview.");
-            callback(MOCK_VIDEOS);
+            callback(MOCK_VIDEOS); // Fallback if empty so app isn't blank
         } else {
             callback(videos);
         }
       }, (error) => {
-        console.error("Error in video subscription:", error);
+        console.error("Error in video subscription (likely invalid key/permissions):", error);
         callback(MOCK_VIDEOS); // Fallback on error
       });
       
@@ -247,7 +273,28 @@ class AppService {
 
   async uploadVideo(file: File, title: string, description: string): Promise<Video> {
     if (!this.currentUser) throw new Error("Must be logged in");
-    if (!storage || !db) throw new Error("Firebase services not available");
+    
+    // Simulate upload if services are missing or broken
+    if (!storage || !db) {
+        console.warn("Firebase Storage/DB not available, simulating upload.");
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return {
+            id: `temp_${Date.now()}`,
+            ownerId: this.currentUser.uid,
+            ownerUsername: this.currentUser.username,
+            ownerProfileImage: this.currentUser.profileImage,
+            videoUrl: URL.createObjectURL(file),
+            thumbnailUrl: 'https://picsum.photos/600/400?random=' + Math.floor(Math.random() * 100),
+            title,
+            description,
+            likesCount: 0,
+            commentsCount: 0,
+            votesCount: 0,
+            createdAt: Date.now(),
+            hasLiked: false,
+            hasVoted: false
+        } as Video;
+    }
 
     try {
       // 1. Upload file to Firebase Storage
@@ -261,7 +308,7 @@ class AppService {
         ownerUsername: this.currentUser.username,
         ownerProfileImage: this.currentUser.profileImage,
         videoUrl: downloadURL,
-        thumbnailUrl: 'https://picsum.photos/600/400?random=' + Math.floor(Math.random() * 100), // Placeholder thumbnail
+        thumbnailUrl: 'https://picsum.photos/600/400?random=' + Math.floor(Math.random() * 100),
         title,
         description,
         likesCount: 0,
@@ -272,24 +319,43 @@ class AppService {
 
       const docRef = await addDoc(collection(db, "videos"), videoData);
       
-      // Return a local representation for immediate UI update
       return {
         ...videoData,
         id: docRef.id,
-        createdAt: Date.now(), // Fallback for UI usage
+        createdAt: Date.now(),
         hasLiked: false,
         hasVoted: false
       } as Video;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed:", error);
+      // Fallback simulation if key fails during upload
+      if (error.code === 'auth/api-key-not-valid' || error.message?.includes('api-key')) {
+         alert("Upload failed due to Invalid API Key. Simulating success for demo.");
+         return {
+            id: `temp_${Date.now()}`,
+            ownerId: this.currentUser.uid,
+            ownerUsername: this.currentUser.username,
+            ownerProfileImage: this.currentUser.profileImage,
+            videoUrl: URL.createObjectURL(file),
+            thumbnailUrl: 'https://picsum.photos/600/400?random=' + Math.floor(Math.random() * 100),
+            title,
+            description,
+            likesCount: 0,
+            commentsCount: 0,
+            votesCount: 0,
+            createdAt: Date.now(),
+            hasLiked: false,
+            hasVoted: false
+        } as Video;
+      }
       throw error;
     }
   }
 
   async toggleLike(videoId: string): Promise<boolean> {
     if (!this.currentUser) return false;
-    if (!db) return true; // Optimistic
+    if (!db) return true;
 
     try {
         const videoRef = doc(db, "videos", videoId);
@@ -298,7 +364,7 @@ class AppService {
         });
         return true;
     } catch (e) {
-        console.warn("Like failed", e);
+        console.warn("Like failed (ignoring for demo)", e);
         return true; 
     }
   }
@@ -314,7 +380,7 @@ class AppService {
         });
         return true;
     } catch (e) {
-        console.warn("Vote failed", e);
+        console.warn("Vote failed (ignoring for demo)", e);
         return true;
     }
   }
@@ -326,7 +392,7 @@ class AppService {
   async addComment(videoId: string, text: string): Promise<Comment> {
     if (!this.currentUser) throw new Error("Not logged in");
     
-    const newComment: Comment = {
+    return {
       id: `c_${Date.now()}`,
       videoId,
       userId: this.currentUser.uid,
@@ -335,8 +401,6 @@ class AppService {
       text,
       timestamp: Date.now()
     };
-    
-    return newComment;
   }
 
   async searchVideos(queryText: string): Promise<Video[]> {
