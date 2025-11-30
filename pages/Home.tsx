@@ -9,21 +9,15 @@ export const Home: React.FC = () => {
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadVideos();
-  }, []);
-
-  const loadVideos = async () => {
-    try {
-      const data = await appService.getVideos();
+    // Subscribe to real-time updates
+    const unsubscribe = appService.subscribeToVideos((data) => {
       setVideos(data);
-      // Optional: Auto-play the first video on load if needed
-      // if (data.length > 0) setPlayingVideoId(data[0].id);
-    } catch (error) {
-      console.error(error);
-    } finally {
       setLoading(false);
-    }
-  };
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
   const handleTogglePlay = (id: string) => {
     setPlayingVideoId(prevId => (prevId === id ? null : id));
@@ -40,6 +34,10 @@ export const Home: React.FC = () => {
 
   const handleLike = async (id: string) => {
     await appService.toggleLike(id);
+    // Optimistic UI update is less critical here since real-time listener will eventually catch it,
+    // but we can keep it for instant feedback. 
+    // However, since we are subscribed, we might want to let the subscription handle the state update
+    // to avoid conflicts. But for smooth UX, optimistic updates are still good.
     setVideos(prev => prev.map(v => {
       if (v.id === id) {
         const newLiked = !v.hasLiked;
