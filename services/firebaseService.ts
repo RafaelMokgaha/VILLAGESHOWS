@@ -54,9 +54,9 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-  console.log("Firebase initialized successfully");
+  console.log(`✅ Firebase initialized successfully. Connected to: ${firebaseConfig.projectId}`);
 } catch (error) {
-  console.error("Firebase initialization failed. The app will run in fallback mode where possible.", error);
+  console.error("❌ Firebase initialization failed. The app will run in fallback mode where possible.", error);
 }
 
 class AppService {
@@ -227,6 +227,7 @@ class AppService {
         
         // If DB is empty, use mocks so app isn't empty in demo
         if (videos.length === 0) {
+            console.log("Real DB is connected but empty. Showing mocks for UI preview.");
             callback(MOCK_VIDEOS);
         } else {
             callback(videos);
