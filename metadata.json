@@ -1,0 +1,8 @@
+{
+  "name": "Village Show",
+  "description": "A neon-styled social video platform for creators and fans.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
