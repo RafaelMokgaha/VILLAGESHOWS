@@ -1,0 +1,1 @@
+// Supabase client removed. Using Firebase.

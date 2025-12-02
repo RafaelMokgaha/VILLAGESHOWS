@@ -1,7 +1,10 @@
 export interface User {
   uid: string;
   username: string;
-  email: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
   bio?: string;
   profileImage?: string;
   followersCount: number;

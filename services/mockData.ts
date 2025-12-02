@@ -3,7 +3,10 @@ import { User, Video, Comment, Notification } from '../types';
 export const MOCK_USER: User = {
   uid: 'current-user-123',
   username: 'NeonTraveler',
-  email: 'demo@villageshow.com',
+  email: 'alex@example.com',
+  firstName: 'Alex',
+  lastName: 'Glider',
+  dob: '1995-08-15',
   bio: 'Exploring the digital frontier 🌌 | Videographer',
   profileImage: 'https://picsum.photos/200/200?random=100',
   followersCount: 1250,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import { Video } from '../types';
-import { appService } from '../services/firebaseService';
+import { appService } from '../services/appService';
 import { MOCK_VIDEOS } from '../services/mockData';
 
 export const Search: React.FC = () => {

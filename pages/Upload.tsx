@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Upload as UploadIcon, X, Film, AlertCircle } from 'lucide-react';
-import { appService } from '../services/firebaseService';
+import { appService } from '../services/appService';
 import { Tab } from '../types';
 
 interface UploadProps {

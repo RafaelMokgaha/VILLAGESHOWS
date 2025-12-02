@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { VideoCard } from '../components/VideoCard';
 import { Video } from '../types';
-import { appService } from '../services/firebaseService';
+import { appService } from '../services/appService';
 
 export const Home: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
